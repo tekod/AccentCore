@@ -1,0 +1,25 @@
+{
+    "name": "tekod/AccentCore",
+    "description": "Core classes for all other AccentPHP packages.",
+    "keywords": [
+        "accent", "accentphp", "accentcore"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://gitlab.com/tekod/AccentPHP",
+    "authors": [{
+        "name": "miroslav curcic",
+        "email": "office@tekod.com",
+        "homepage": "www.tekod.com"
+    }],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0.0"
+    },
+    "require-dev": {
+    },    
+    "autoload": {
+        "psr-0": {           
+        }
+    }    
+}
