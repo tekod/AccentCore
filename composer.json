@@ -10,7 +10,7 @@
     "authors": [{
         "name": "miroslav curcic",
         "email": "office@tekod.com",
-        "homepage": "www.tekod.com"
+        "homepage": "https://www.tekod.com"
     }],
     "minimum-stability": "dev",
     "require": {
