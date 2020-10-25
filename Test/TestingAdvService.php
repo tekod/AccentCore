@@ -34,7 +34,7 @@ class TestingAdvService {
     }
 
 
-    public function Initied() {
+    public function Initiated() {
         // ServiceManager field is injected by Service manager
         return is_object($this->Opts['ServiceManager']);
     }

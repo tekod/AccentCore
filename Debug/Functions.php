@@ -129,3 +129,4 @@ function d_is_authorized() {
 
     return \Accent\AccentCore\Debug\Debug::Instance('d-dump', ['AuthKey'=>false])->IsAuthorizedSession();
 }
+

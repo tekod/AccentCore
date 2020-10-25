@@ -22,30 +22,48 @@ class UTF extends Component {
 	protected $Engine;
 
 
+    /**
+     * Constructor.
+     */
 	public function __construct($Options=array()) {
 
         parent::__construct($Options);
 
-        // set engine
+        // forced to use specified engine
 	    if (!is_null($this->Options['ForceEngine'])) {
 	        $this->Engine= $this->Options['ForceEngine'];
-	    } else if (function_exists('mb_strlen')) {
+            return;
+	    }
+        // can we use mbstring extension?
+        if (function_exists('mb_strlen')) {
 	        $this->Engine= 'mbstring';
 	        mb_internal_encoding('UTF-8');
-	    } else if (function_exists('iconv_strlen')) {
+            return;
+	    }
+        // can we use iconv extension?
+        if (function_exists('iconv_strlen')) {
 	        $this->Engine= 'iconv';
             if (PHP_VERSION_ID < 50600) {
                 iconv_set_encoding('internal_encoding', 'UTF-8');
             } else {
                 ini_set('default_charset', 'UTF-8');
             }
-	    } else if (@preg_match( '//u', '' ) === false) {
+            return;
+	    }
+        // can we use PRCE?
+        if (@preg_match( '//u', '' ) === false) {
 	        $this->Engine= 'pcre';          // not completly implemented
 	    }
         // everything else will use slower methods (mathematics, regex,...)
 	}
 
 
+    /**
+     * "strlen".
+     *
+     * @param string $String
+     * @return int
+     */
 	public function strlen($String) {
 
 		if ($this->Engine=='mbstring') {
@@ -58,56 +76,74 @@ class UTF extends Component {
 	}
 
 
-
+    /**
+     * "substr".
+     *
+     * @param string $String
+     * @param int $Start
+     * @param int $Length
+     * @return string
+     */
 	public function substr($String, $Start=0, $Length=null) {
 
 	    $Start = (integer)$Start;
-	    if (!is_null($Length)) $Length= intval($Length);
-	    $StringLength= (($Start<0)or(($Length!==null)and($Length<0)))
+	    if (!is_null($Length)) {
+            $Length= intval($Length);
+        }
+	    $StringLength= $Start < 0 || ($Length !== null && $Length < 0)
             ? $this->strlen($String)
             : 0;
-	    if ($Start<0) $Start= max(0, $StringLength+$Start);
-	    if ((($Length!==null)and($Length<0))) $Length= max(0, $StringLength-$Start+$Length);
-	    if ($Length===0) return '';
-
-	    if ($this->Engine=='mbstring') {
-	        if ($Length===null) $Length= mb_strlen($String);
+	    if ($Start < 0) {
+            $Start= max(0, $StringLength+$Start);
+        }
+	    if ($Length !== null && $Length < 0) {
+            $Length= max(0, $StringLength-$Start+$Length);
+        }
+	    if ($Length === 0) {
+            return '';
+        }
+	    if ($this->Engine === 'mbstring') {
+	        if ($Length === null) {
+                $Length= mb_strlen($String);
+            }
 	        return mb_substr($String, $Start, $Length, 'UTF-8');
 	    }
-	    if($this->Engine=='iconv') {
-	        if ($Length==null)	{
+	    if ($this->Engine === 'iconv') {
+	        if ($Length === null)	{
 	            return iconv_substr($String, $Start, $this->strlen($String), 'UTF-8');
 	        }
 	        return iconv_substr($String, $Start, $Length, 'UTF-8');
 	    }
 	    // slower method
-	    $StrLen = strlen($String);
-	    $Bytes = 0;       // Find the starting byte offset.
+	    $StrLen= strlen($String);
+	    $Bytes= 0;       // Find the starting byte offset.
 	    if ($Start > 0) { // Count all the continuation bytes from the start until we have found
-	        $Bytes = -1; $Chars = -1; // $start characters or the end of the string.
+	        $Bytes= -1; $Chars = -1; // $start characters or the end of the string.
 	        while ($Bytes < $StrLen - 1 && $Chars < $Start) {
 	            $Bytes++;
-	            $c = ord($String[$Bytes]);
+	            $c= ord($String[$Bytes]);
 	            if ($c < 0x80 || $c >= 0xC0) {
 	                $Chars++;
 	            }
 	        }
-            if ($Chars < $Start) $Bytes++; // reached end of string
+            if ($Chars < $Start) {
+                $Bytes++; // reached end of string
+            }
 	    } elseif ($Start < 0) { // Count all the continuation bytes from the end until we have found abs($start) characters.
-	        $Start = abs($Start);
-	        $Bytes = $StrLen; $Chars = 0;
+	        $Start= abs($Start);
+	        $Bytes= $StrLen; $Chars = 0;
 	        while ($Bytes > 0 && $Chars < $Start) {
 	            $Bytes--;
-	            $c = ord($String[$Bytes]);
+	            $c= ord($String[$Bytes]);
 	            if ($c < 0x80 || $c >= 0xC0) {
 	                $Chars++;
 	            }
 	        }
 	    }
-	    $iStart = $Bytes;
+	    $iStart= $Bytes;
 
 	    // Find the ending byte offset.
-	    if ($Length === NULL) {
+	    if ($Length === null) {
 	        $iEnd = $StrLen;
 	    } elseif ($Length > 0) {
 	        // Count all the continuation bytes from the starting index until we have
@@ -152,61 +188,100 @@ class UTF extends Component {
 
 
 
+    /**
+     * "strpos".
+     *
+     * @param string $Haystack
+     * @param string $Needle
+     * @param int $Offset
+     * @return int|boolean
+     */
 	public function strpos($Haystack, $Needle, $Offset=0)	{
 
-        if ($Needle==='') {
+        if ($Needle === '') {
             return false;
         }
-        if($this->Engine=='mbstring') {
+        if ($this->Engine === 'mbstring') {
 			return mb_strpos($Haystack, $Needle, $Offset, 'UTF-8');
 		}
-		if($this->Engine=='iconv') {
+		if ($this->Engine === 'iconv') {
 			return iconv_strpos($Haystack, $Needle, $Offset, 'UTF-8');
 		}
 		$ByteOffset= $this->CharToBytePos($Haystack, $Offset);
-		if ($ByteOffset === false)	return false; // offset beyond string length
+		if ($ByteOffset === false) {
+            return false; // offset beyond string length
+        }
 		$BytePos= strpos($Haystack, $Needle, $ByteOffset);
-		if ($BytePos === false)	return false; // needle not found
+		if ($BytePos === false)	{
+            return false; // needle not found
+        }
 		return $this->ByteToCharPos($Haystack, $BytePos);
 	}
 
 
+    /**
+     * "strrpos".
+     *
+     * @param string $Haystack
+     * @param string $Needle
+     * @param int $Offset
+     * @return int|boolean
+     */
 	public function strrpos($Haystack, $Needle, $Offset=null) {
 
-        if ($Needle==='') {
+        if ($Needle === '') {
             return false;
         }
-		if($this->Engine=='mbstring') {
-            if ($Offset===null) $Offset= $this->strlen($Haystack);
+		if ($this->Engine === 'mbstring') {
+            if ($Offset === null) {
+                $Offset= $this->strlen($Haystack);
+            }
 			return mb_strrpos($Haystack, $Needle, $Offset, 'UTF-8');
 		}
-		if($this->Engine=='iconv') {
+		if ($this->Engine === 'iconv') {
             // solving missing $Offset parametar in 'iconv_strrpos'
-            if ($Offset<0) $Haystack= $this->substr($Haystack,0,$Offset);
+            if ($Offset < 0) {
+                $Haystack= $this->substr($Haystack, 0, $Offset);
+            }
             $Res= iconv_strrpos($Haystack, $Needle, 'UTF-8');
-            return ($Res!==false && $Offset>0 && $Res<$Offset) ? false : $Res;
+            return $Res !== false && $Offset > 0 && $Res < $Offset
+                ? false
+                : $Res;
 		}
-        if ($Offset<0) $Haystack= $this->substr($Haystack,0,$Offset);
+        if ($Offset < 0) {
+            $Haystack= $this->substr($Haystack, 0, $Offset);
+        }
         $ar= explode($Needle, $Haystack);
-        if (count($ar)==1) return false;
+        if (count($ar) === 1) {
+            return false;
+        }
         array_pop($ar); // pop off the end of the string where the last match found
         $Pos= $this->strlen(implode($Needle,$ar));
-        return ($Pos!==false && $Offset>0 && $Pos<$Offset) ? false : $Pos;
+        return $Pos !== false && $Offset > 0 && $Pos < $Offset
+            ? false
+            : $Pos;
   	}
 
 
+    /**
+     * "str_split".
+     *
+     * @param string $String
+     * @param int $Length
+     * @return array
+     */
     public function str_split($String, $Length=1) {
 
-        $Result= array();
-        if ($this->Engine=='mbstring' || $this->Engine=='iconv') {
+        $Result= [];
+        if ($this->Engine === 'mbstring' || $this->Engine === 'iconv') {
             $StrLength= $this->strlen($String);
-            for($x=0; $x<$StrLength; $x=$x+$Length) {
+            for($x=0; $x < $StrLength; $x= $x+$Length) {
                 $Result[]= $this->substr($String, $x, $Length);
             }
             return $Result;
         }
-        if ($this->Engine=='pcre') {
-            if ($Length == 1) {
+        if ($this->Engine === 'pcre') {
+            if ($Length === 1) {
                 return preg_split("//u", $String, -1, PREG_SPLIT_NO_EMPTY);
             }
             $Array= preg_split('/(?<!^)(?!$)/u', $String, -1, PREG_SPLIT_NO_EMPTY);
@@ -224,43 +299,65 @@ class UTF extends Component {
     }
 
 
+    /**
+     * "strtolower".
+     *
+     * @param string $String
+     * @return string|boolean
+     */
 	public function strtolower($String) {
 
         // not supported by iconv
-	    if ($this->Engine=='mbstring') {
-	       return mb_strtolower($String, 'UTF-8');
+	    if ($this->Engine === 'mbstring') {
+            return mb_strtolower($String, 'UTF-8');
 	    }
 	    $UniStr= $this->ToUnicode($String);
-    	if ($UniStr === false)
-	       return false;
+    	if ($UniStr === false) {
+            return false;
+        }
     	for ($i=0, $c=count($UniStr); $i<$c; $i++) {
-		  if (isset($this->UTF8_UPPER_TO_LOWER[$UniStr[$i]])) {
-			$UniStr[$i]= $this->UTF8_UPPER_TO_LOWER[$UniStr[$i]];
-		  }
+            if (isset($this->UTF8_UPPER_TO_LOWER[$UniStr[$i]])) {
+                $UniStr[$i]= $this->UTF8_UPPER_TO_LOWER[$UniStr[$i]];
+            }
 	    }
 	    return $this->FromUnicode($UniStr);
 	}
 
 
+    /**
+     * "strtoupper".
+     *
+     * @param string $String
+     * @return string|boolean
+     */
 	public function strtoupper($String) {
 
 	    // not supported by iconv
-	    if($this->Engine=='mbstring') {
+	    if($this->Engine === 'mbstring') {
 	       return mb_strtoupper($String, 'UTF-8');
 	    }
 	    $UniStr= $this->ToUnicode($String);
 	    if ($UniStr === false) {
-		  return false;
+            return false;
         }
     	for ($i=0, $c=count($UniStr); $i<$c; $i++) {
-		  if (isset($this->UTF8_LOWER_TO_UPPER[$UniStr[$i]])) {
-			$UniStr[$i]= $this->UTF8_LOWER_TO_UPPER[$UniStr[$i]];
-		  }
+            if (isset($this->UTF8_LOWER_TO_UPPER[$UniStr[$i]])) {
+                $UniStr[$i]= $this->UTF8_LOWER_TO_UPPER[$UniStr[$i]];
+            }
 	    }
         return $this->FromUnicode($UniStr);
 	}
 
 
+    /**
+     * "str_pad".
+     *
+     * @param string $String
+     * @param int $Length
+     * @param string $PadStr
+     * @param int $Direction
+     * @return string
+     */
     public function str_pad($String, $Length, $PadStr=' ', $Direction=STR_PAD_RIGHT) {
 
         $PadBefore= $Direction === STR_PAD_BOTH || $Direction === STR_PAD_LEFT;
@@ -275,6 +372,13 @@ class UTF extends Component {
         return $Before . $String . $After;
     }
 
+
+    /**
+     * "ucfirst".
+     *
+     * @param string $String
+     * @return string
+     */
 	public function ucfirst($String){
 
 		// uppercasing first char in string
@@ -282,28 +386,40 @@ class UTF extends Component {
 	}
 
 
+    /**
+     * "chr".
+     *
+     * @param int $c
+     * @return string|boolean
+     */
 	public function chr($c) {
 
 		// converts integer (as unicode number) into char as UTF8 string
 	    if ($c <= 0x7F) {
     	    return chr($c);
-	    } else if ($c <= 0x7FF) {
+	    }
+        if ($c <= 0x7FF) {
 	        return chr(0xC0 | $c >> 6) . chr(0x80 | $c & 0x3F);
-	    } else if ($c <= 0xFFFF) {
+	    }
+        if ($c <= 0xFFFF) {
 	        return chr(0xE0 | $c >> 12) . chr(0x80 | $c >> 6 & 0x3F)
 	                                    . chr(0x80 | $c & 0x3F);
-	    } else if ($c <= 0x10FFFF) {
+	    }
+        if ($c <= 0x10FFFF) {
 	        return chr(0xF0 | $c >> 18) . chr(0x80 | $c >> 12 & 0x3F)
 	                                    . chr(0x80 | $c >> 6 & 0x3F)
 	                                    . chr(0x80 | $c & 0x3F);
-	    } else {
-	        return false;
 	    }
+        return false;
 	}
 
 
+    /**
+     * Internal method.
+     * Translates a character position into an 'absolute' byte position. str if utf8.
+     */
 	protected function CharToBytePos($Str,$Pos)	{
-		// Translates a character position into an 'absolute' byte position. str if utf8
+
 		$n= 0;				// number of characters found
 		$p= abs($Pos);		// number of characters wanted
 		if ($Pos >= 0)	{
@@ -313,15 +429,22 @@ class UTF extends Component {
 			$i= strlen($Str)-1;
 			$d= -1;
 		}
-		for( ; strlen($Str{$i}) && $n<$p; $i+=$d)	{
-			$c= (int)ord($Str{$i});
-			if (!($c & 0x80)) $n++;	// single-byte (0xxxxxx)
-			  elseif (($c & 0xC0) == 0xC0) $n++;	// multi-byte starting byte (11xxxxxx)
+		for( ; strlen($Str[$i]) && $n<$p; $i+=$d)	{
+			$c= (int)ord($Str[$i]);
+			if (!($c & 0x80)) {
+                $n++;	// single-byte (0xxxxxx)
+            } else if (($c & 0xC0) === 0xC0) {
+                $n++;	// multi-byte starting byte (11xxxxxx)
+            }
 		}
-		if (!strlen($Str{$i})) return false; // offset beyond string length
+		if (!strlen($Str[$i])) {
+            return false; // offset beyond string length
+        }
 		if ($Pos >= 0)	{
-				// skip trailing multi-byte data bytes
-			while ((ord($Str{$i}) & 0x80) && !(ord($Str{$i}) & 0x40)) { $i++; }
+			// skip trailing multi-byte data bytes
+			while ((ord($Str[$i]) & 0x80) && !(ord($Str[$i]) & 0x40)) {
+                $i++;
+            }
 		} else {
 			$i++; // correct offset
 		}
@@ -329,23 +452,39 @@ class UTF extends Component {
 	}
 
 
+    /**
+     * Internal method.
+     * Translates an 'absolute' byte position into a character position, str if utf8.
+     */
 	protected function ByteToCharPos($Str,$Pos)	{
-		// Translates an 'absolute' byte position into a character position, str if utf8
+
 		$n= 0;	// number of characters
 		for($i=$Pos; $i>0; $i--)	{
-			$c= (int)ord($Str{$i});
-			if (!($c & 0x80)) $n++;	// single-byte (0xxxxxx)
-			elseif (($c & 0xC0) == 0xC0) $n++;	// multi-byte starting byte (11xxxxxx)
+			$c= (int)ord($Str[$i]);
+			if (!($c & 0x80)) {
+                $n++;	// single-byte (0xxxxxx)
+            } else if (($c & 0xC0) === 0xC0) {
+                $n++;	// multi-byte starting byte (11xxxxxx)
+            }
 		}
-		if (!strlen($Str{$i}))	return false; // offset beyond string length
+		if (!strlen($Str[$i])) {
+            return false; // offset beyond string length
+        }
 		return $n;
 	}
 
 
-
+    /**
+     * Convert chars in string to HTML entities.
+     *
+     * @param string $String
+     * @param string $MaxChar
+     * @param bool $Entities
+     * @return string
+     */
 	public function ConvertToEnt($String, $MaxChar=0x7F, $Entities=true) {
 
-		if(!$String) {
+		if (!$String) {
             return '';
         }
 		$Returns= "";
@@ -379,41 +518,57 @@ class UTF extends Component {
 					break;
 				}
 			}
-			if ($u <= $MaxChar) $Returns .= chr($u);
-			 elseif ($Entities)  $Returns .= '&#'.$u.';';
-			 else  $Returns .= '?';
+			if ($u <= $MaxChar) {
+                $Returns .= chr($u);
+            } else if ($Entities) {
+                $Returns .= '&#'.$u.';';
+            } else {
+                $Returns .= '?';
+            }
 		} while (++$Pos < $Total);
 		return $Returns;
 	}
 
 
+    /**
+     * Convert UTF-8 string into ISO8859 encoded string.
+     *
+     * @param string $String
+     * @param bool $Entities
+     * @return string
+     */
 	public function UTF8ToISO8859($String, $Entities=true) {
 
         return self::convert2ent($String, 0xFF, $Entities);
 	}
 
 
-
-    public function UTF16ToUTF8($UTF16Strign) {
+    /**
+     * Convert UTF-16 string into UTF-8 string.
+     *
+     * @param string $UTF16String
+     * @return string
+     */
+    public function UTF16ToUTF8($UTF16String) {
 
         if (function_exists('mb_convert_encoding')) {
-            return mb_convert_encoding($UTF16Strign, 'UTF-8', 'UTF-16');
+            return mb_convert_encoding($UTF16String, 'UTF-8', 'UTF-16');
         }
         // slower method then mb_convert_encoding
-        $Bytes = (ord($UTF16Strign[0]) << 8) | ord($UTF16Strign[1]);
+        $Bytes = (ord($UTF16String[0]) << 8) | ord($UTF16String[1]);
         switch(true) {
-            case ((0x7F & $Bytes) == $Bytes):
+            case ((0x7F & $Bytes) === $Bytes):
                 // this case should never be reached, because we are in ASCII range
                 // see: http://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
                 return chr(0x7F & $Bytes);
 
-            case (0x07FF & $Bytes) == $Bytes:
+            case (0x07FF & $Bytes) === $Bytes:
                 // return a 2-byte UTF-8 character
                 // see: http://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
                 return chr(0xC0 | (($Bytes >> 6) & 0x1F))
                      . chr(0x80 | ($Bytes & 0x3F));
 
-            case (0xFFFF & $Bytes) == $Bytes:
+            case (0xFFFF & $Bytes) === $Bytes:
                 // return a 3-byte UTF-8 character
                 // see: http://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
                 return chr(0xE0 | (($Bytes >> 12) & 0x0F))
@@ -425,7 +580,12 @@ class UTF extends Component {
     }
 
 
-
+    /**
+     * Convert UTF-8 string into UTF-16 encoded string.
+     *
+     * @param string $UTF8String
+     * @return string
+     */
     public function UTF8ToUTF16($UTF8String) {
 
         if (function_exists('mb_convert_encoding')) {
@@ -456,6 +616,9 @@ class UTF extends Component {
     }
 
 
+    /**
+     * Internal method.
+     */
 	protected function FromUnicode($Arr) {
 
 	    ob_start();
@@ -465,46 +628,39 @@ class UTF extends Component {
 	    foreach ($Keys as $k)
 	    {
 	        // ASCII range (including control chars)
-	        if (($Arr[$k] >= 0) AND ($Arr[$k] <= 0x007f))
-	        {
+	        if (($Arr[$k] >= 0) AND ($Arr[$k] <= 0x007f)) {
 	            echo chr($Arr[$k]);
 	        }
 	        // 2 byte sequence
-	        elseif ($Arr[$k] <= 0x07ff)
-	        {
+	        elseif ($Arr[$k] <= 0x07ff) {
 	            echo chr(0xc0 | ($Arr[$k] >> 6));
 	            echo chr(0x80 | ($Arr[$k] & 0x003f));
 	        }
 	        // Byte order mark (skip)
-	        elseif ($Arr[$k] == 0xFEFF)
-	        {
+	        elseif ($Arr[$k] === 0xFEFF) {
 	            // nop -- zap the BOM
 	        }
 	        // Test for illegal surrogates
-	        elseif ($Arr[$k] >= 0xD800 AND $Arr[$k] <= 0xDFFF)
-	        {
+	        elseif ($Arr[$k] >= 0xD800 AND $Arr[$k] <= 0xDFFF) {
 	            // Found a surrogate
 	            $this->Error("UTF/FromUnicode: Illegal surrogate at index: $k, value: $Arr[$k]");
 	            return false;
 	        }
 	        // 3 byte sequence
-	        elseif ($Arr[$k] <= 0xffff)
-	        {
+	        elseif ($Arr[$k] <= 0xffff) {
 	            echo chr(0xe0 | ($Arr[$k] >> 12));
 	            echo chr(0x80 | (($Arr[$k] >> 6) & 0x003f));
 	            echo chr(0x80 | ($Arr[$k] & 0x003f));
 	        }
 	        // 4 byte sequence
-	        elseif ($Arr[$k] <= 0x10ffff)
-	        {
+	        elseif ($Arr[$k] <= 0x10ffff) {
 	            echo chr(0xf0 | ($Arr[$k] >> 18));
 	            echo chr(0x80 | (($Arr[$k] >> 12) & 0x3f));
 	            echo chr(0x80 | (($Arr[$k] >> 6) & 0x3f));
 	            echo chr(0x80 | ($Arr[$k] & 0x3f));
 	        }
 	        // Out of range
-	        else
-	        {
+	        else {
                 $this->Error('UTF/FromUnicode: Codepoint out of Unicode range at index: '.$k.', value: '.$Arr[$k]);
 	            return false;
 	        }
@@ -516,6 +672,9 @@ class UTF extends Component {
 	}
 
 
+    /**
+     * Internal method.
+     */
 	protected function ToUnicode($String) {
 
 	    $mState= 0; // cached expected number of octets after the current octet until the beginning of the next UTF8 character sequence
@@ -526,46 +685,34 @@ class UTF extends Component {
 
 	    $len= strlen($String);
 
-	    for ($i = 0; $i < $len; $i++)
-	    {
+	    for ($i = 0; $i < $len; $i++) {
 	        $in = ord($String[$i]);
 
-	        if ($mState == 0)
-	        {
-	            // When mState is zero we expect either a US-ASCII character or a
-	            // multi-octet sequence.
-	            if (0 == (0x80 & $in))
-	            {
+	        // when mState is zero we expect either a US-ASCII character or a multi-octet sequence.
+	        if ($mState === 0) {
+	            if (0 === (0x80 & $in)) {
 	                // US-ASCII, pass straight through.
 	                $out[] = $in;
 	                $mBytes = 1;
-	            }
-	            elseif (0xC0 == (0xE0 & $in))
-	            {
+	            } elseif (0xC0 === (0xE0 & $in)) {
 	                // First octet of 2 octet sequence
 	                $mUcs4 = $in;
 	                $mUcs4 = ($mUcs4 & 0x1F) << 6;
 	                $mState = 1;
 	                $mBytes = 2;
-	            }
-	            elseif (0xE0 == (0xF0 & $in))
-	            {
+	            } elseif (0xE0 === (0xF0 & $in)) {
 	                // First octet of 3 octet sequence
 	                $mUcs4 = $in;
 	                $mUcs4 = ($mUcs4 & 0x0F) << 12;
 	                $mState = 2;
 	                $mBytes = 3;
-	            }
-	            elseif (0xF0 == (0xF8 & $in))
-	            {
+	            } elseif (0xF0 === (0xF8 & $in)) {
 	                // First octet of 4 octet sequence
 	                $mUcs4 = $in;
 	                $mUcs4 = ($mUcs4 & 0x07) << 18;
 	                $mState = 3;
 	                $mBytes = 4;
-	            }
-	            elseif (0xF8 == (0xFC & $in))
-	            {
+	            } elseif (0xF8 === (0xFC & $in)) {
 	                // First octet of 5 octet sequence.
 	                //
 	                // This is illegal because the encoded codepoint must be either
@@ -577,72 +724,61 @@ class UTF extends Component {
 	                $mUcs4 = ($mUcs4 & 0x03) << 24;
 	                $mState = 4;
 	                $mBytes = 5;
-	            }
-	            elseif (0xFC == (0xFE & $in))
-	            {
+	            } elseif (0xFC === (0xFE & $in)) {
 	                // First octet of 6 octet sequence, see comments for 5 octet sequence.
 	                $mUcs4 = $in;
 	                $mUcs4 = ($mUcs4 & 1) << 30;
 	                $mState = 5;
 	                $mBytes = 6;
-	            }
-	            else
-	            {
+	            } else {
 	                // Current octet is neither in the US-ASCII range nor a legal first octet of a multi-octet sequence.
 	                $this->Error('ToUnicode: Illegal sequence identifier in UTF-8 at byte '.$i);
 	                return false;
 	            }
+                continue;
 	        }
-	        else
-	        {
-	            // When mState is non-zero, we expect a continuation of the multi-octet sequence
-	            if (0x80 == (0xC0 & $in))
-	            {
-	                // Legal continuation
-	                $shift = ($mState - 1) * 6;
-	                $tmp = $in;
-	                $tmp = ($tmp & 0x0000003F) << $shift;
-	                $mUcs4 |= $tmp;
 
-	                // End of the multi-octet sequence. mUcs4 now contains the final Unicode codepoint to be output
-	                if (0 == --$mState)
-	                {
-	                    // Check for illegal sequences and codepoints
+            // when mState is non-zero, we expect a continuation of the multi-octet sequence
+            if (0x80 === (0xC0 & $in)) {
+                // Legal continuation
+                $shift = ($mState - 1) * 6;
+                $tmp = $in;
+                $tmp = ($tmp & 0x0000003F) << $shift;
+                $mUcs4 |= $tmp;
 
-	                    // From Unicode 3.1, non-shortest form is illegal
-	                    if (((2 == $mBytes) AND ($mUcs4 < 0x0080)) OR
-	                    ((3 == $mBytes) AND ($mUcs4 < 0x0800)) OR
-	                    ((4 == $mBytes) AND ($mUcs4 < 0x10000)) OR
-	                    (4 < $mBytes) OR
-	                    // From Unicode 3.2, surrogate characters are illegal
-	                    (($mUcs4 & 0xFFFFF800) == 0xD800) OR
-	                    // Codepoints outside the Unicode range are illegal
-	                    ($mUcs4 > 0x10FFFF))
-	                    {
-	                        $this->Error('ToUnicode: Illegal sequence or codepoint in UTF-8 at byte '.$i);
-	                        return FALSE;
-	                    }
+                // End of the multi-octet sequence. mUcs4 now contains the final Unicode codepoint to be output
+                if (0 === --$mState) {
+                    // Check for illegal sequences and codepoints
 
-	                    if (0xFEFF != $mUcs4)
-	                    {
-	                        // BOM is legal but we don't want to output it
-	                        $out[] = $mUcs4;
-	                    }
+                    // From Unicode 3.1, non-shortest form is illegal
+                    if ((2 === $mBytes && $mUcs4 < 0x0080) ||
+                        (3 === $mBytes && $mUcs4 < 0x0800) ||
+                        (4 === $mBytes && $mUcs4 < 0x10000) ||
+                        (4 < $mBytes) ||
+                        // From Unicode 3.2, surrogate characters are illegal
+                        (($mUcs4 & 0xFFFFF800) === 0xD800) ||
+                        // Codepoints outside the Unicode range are illegal
+                        ($mUcs4 > 0x10FFFF)) {
+                        $this->Error('ToUnicode: Illegal sequence or codepoint in UTF-8 at byte '.$i);
+                        return false;
+                    }
 
-	                    // Initialize UTF-8 cache
-	                    $mState = 0;
-	                    $mUcs4  = 0;
-	                    $mBytes = 1;
-	                }
-	            }
-	            else
-	            {
-	                // ((0xC0 & (*in) != 0x80) AND (mState != 0))
-	                // Incomplete multi-octet sequence
-	                $this->Error('ToUnicode: Incomplete multi-octet sequence in UTF-8 at byte '.$i);
-	                return false;
-	            }
-	        }
+                    if (0xFEFF != $mUcs4) {
+                        // BOM is legal but we don't want to output it
+                        $out[] = $mUcs4;
+                    }
+
+                    // Initialize UTF-8 cache
+                    $mState = 0;
+                    $mUcs4  = 0;
+                    $mBytes = 1;
+                }
+                continue;
+            }
+
+            // incomplete multi-octet sequence
+            $this->Error('ToUnicode: Incomplete multi-octet sequence in UTF-8 at byte '.$i);
+            return false;
 	    }
 
 	    return $out;
@@ -650,6 +786,12 @@ class UTF extends Component {
 
 
 
+    /**
+     * Convert chars with diacritics into their base ASCII character.
+     *
+     * @param string $Text
+     * @return string
+     */
 	public function SimplifiedDiacritics($Text) {
         // TODO: add more ....
 	  $Codes= array(
@@ -677,15 +819,9 @@ class UTF extends Component {
 	}
 
 
-	public function StripBOM($String) {
-	    // remove BOM from begining of string
-		$BOM= chr(239).chr(187).chr(191);
-		return (substr($String, 0, 3) == $BOM)
-		  ? substr($String, 3)
-		  : $String;
-	}
-
-
+    /**
+     * Internal tables.
+     */
     protected $UTF8_UPPER_TO_LOWER = array(
 			0x0041=>0x0061, 0x03A6=>0x03C6, 0x0162=>0x0163, 0x00C5=>0x00E5, 0x0042=>0x0062,
 			0x0139=>0x013A, 0x00C1=>0x00E1, 0x0141=>0x0142, 0x038E=>0x03CD, 0x0100=>0x0101,
