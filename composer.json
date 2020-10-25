@@ -12,12 +12,9 @@
         "email": "office@tekod.com",
         "homepage": "https://www.tekod.com"
     }],
-    "minimum-stability": "dev",
     "require": {
         "php": ">=7.0.0"
-    },
-    "require-dev": {
-    },    
+    },   
     "autoload": {
         "psr-0": {           
         }
