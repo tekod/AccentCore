@@ -12,8 +12,6 @@
  * Simple but powerful logger system,
  * portable and independent of other AccentPHP classes, evan AccentCore package.
  */
-
-
 class Logger {
 
     // internal properties
@@ -122,13 +120,20 @@ class Logger {
      */
     protected function ResizeFile($SizeLimit) {
 
-        $FileSize = filesize($this->LoggerFile);
-        if ($FileSize > $SizeLimit) {
-            $Dump = $FileSize > 8 * 1024 * 1024
-                ? ''            // 8 Mb is too big to fit in memory, just empty file
-                : '  .  .  .  . . . ......' . substr(file_get_contents($this->LoggerFile), -($SizeLimit / 2));
-            file_put_contents($this->LoggerFile, $Dump);
+        $FileSize= filesize($this->LoggerFile);
+
+        // skip if limit is not exeeded
+        if ($FileSize < $SizeLimit) {
+            return;
         }
+
+        // overwrite log file with latest messages
+        $NewLength= min(
+            intval($SizeLimit * 0.75),      // copy only latest 3/4 of current log file
+            8 * 1024 * 1024                 // limit to 8 Mb, more than that probaly will not fit in memory
+        );
+        $NewDump= '   .   .  .  . . . ......' . file_get_contents($this->LoggerFile, false, null, -$NewLength);
+        file_put_contents($this->LoggerFile, $NewDump);
     }
 
 }

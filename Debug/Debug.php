@@ -62,7 +62,7 @@ class Debug {
     protected $ProfilerPrevTime;
 
     // maximum loop level for VarDump method
-    protected $MaxVarDumpNesting= 5;
+    protected $MaxVarDumpNesting= 7;
 
     // internal buffer for detecting recursions
     protected $VarDumpHashes= array();
@@ -407,10 +407,13 @@ class Debug {
 
         return '<style type="text/css">'
                 .'.AccDbgVD {background:#111;color:#fff;padding:3px;margin:0;font:normal 13px sans-serif;}'
+                .'.AccDbgVD::selection {color:#000; background-color:#fff;}'
                 .'.AccDbgVD ul {display:none;padding:2px 2px 2px 16px;margin:0;background:#111;color:#fff;border-left:1px dashed #666;}'
                 .'.AccDbgVD ul li {display:block; line-height:1.1em; margin:0; padding:3px 0 3px 0;}'
                 .'.AccDbgVD abbr {color:#8cf;font-weight:bold;cursor:pointer;}'
                 .'.AccDbgVD b {color:#ca8;font-weight:bold;}'
+                .'.AccDbgVD prot {opacity:0.4}'
+                .'.AccDbgVD prot:after {content:"\1f512"; margin-right: 2px; font-size:80%; line-height:1em;}'
                 .'.AccDbgVDO {color:#866 !important}'
                 .'.AccDbgVDO + ul {display:block}'
                 .'</style>';
@@ -459,26 +462,39 @@ class Debug {
             case 'object':
                 $VarType= 'object('.get_class($VarValue).')';
                 $VarDump= ' '.$ExpandButton;
+                if ($VarValue instanceof \Closure) { // check is is closure
+                    $VarType= 'Closure';
+                    $Reflection= new \ReflectionFunction($VarValue);
+                    $File= $Reflection->getFileName();
+                    if ($File) {
+                        $VarDump= '@ '.$File.' ['.$Reflection->getStartLine().']';
+                        break;
+                    }
+                    $VarDump= '[unresolved closure]';
+                    break;
+                }
                 if ($Level >= $this->MaxVarDumpNesting) {
-                    $VarDump .= $MsgTooDeep;
+                    $VarDump= $MsgTooDeep;
                     break;
                 }
                 if (!$this->VarDumpCheckLoop(spl_object_hash($VarValue))) {
-                    $VarDump .=  '- LOOP DETECTED -';
+                    $VarDump=  '- LOOP DETECTED -';
                     break;
                 }
                 $Cast= (array)$VarValue;
                 $List= array();
                 foreach($Cast as $k=>$v) {
+                    $Icon= '';
                     if (substr($k,0,3) === "\x00\x2A\x00") { // remove marker 'protected'
                         $k= substr($k,3);
+                        $Icon= '<prot></prot>';
                     }
-                    if ($k[0] === "\x00") { // skip 'private' properties
+                    if (!is_numeric($k) && $k[0] === "\x00") { // skip 'private' properties
                         continue;
                     }
                     $List[]= sprintf($KeyValueFormat,
                         $AsHTML ? htmlentities($k) : $k,
-                        $this->VarDumpProcessor($v, $Level+1, $Expand, $AsHTML));
+                        $Icon.$this->VarDumpProcessor($v, $Level+1, $Expand, $AsHTML));
                 }
                 $VarDump .= sprintf($AsHTML ? '<ul>%s</ul>' : '%s', implode('',$List));
                 break;

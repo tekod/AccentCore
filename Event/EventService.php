@@ -19,6 +19,7 @@ use Accent\AccentCore\Event\BaseEvent;
 class EventService extends Component {
 
 
+    // default configuration
     protected static $DefaultOptions= array(
 
         // version of Accent/AccentCore package

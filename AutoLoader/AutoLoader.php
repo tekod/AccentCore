@@ -8,10 +8,13 @@
  * @link       http://www.accentphp.com
  */
 
-
+/**
+ * Robust autoloader feature.
+ */
 class AutoLoader {
 
 
+    // default configuration
     protected $DefaultOptions= array(
         'Cache'=> array(
             'Method'=> '', // name of storage method: 'File', 'APC'
