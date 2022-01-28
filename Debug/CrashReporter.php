@@ -376,7 +376,7 @@ class CrashReporter extends Component {
 
         // prepare file
         $LogFile= $Para;
-        @mkdir(dirname($LogFile), true);
+        @mkdir(dirname($LogFile), 0777, true);
         if (!is_file($LogFile)) {
             file_put_contents($LogFile, "<?php __halt_compiler();  // hide rest of file...");
         }
