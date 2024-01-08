@@ -100,9 +100,9 @@ class Collection implements \IteratorAggregate {
      * Implementation for IteratorAggregate interface.
      * Used for foreach loops.
      *
-     * @return \ArrayIterator
+     * @return \Traversable
      */
-    public function getIterator() {
+    public function getIterator(): \Traversable {
 
         return new \ArrayIterator($this->Buffer);
     }

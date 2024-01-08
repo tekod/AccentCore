@@ -24,7 +24,7 @@ class File {
      */
     public function Slashed($Path) {
 
-        $Path= str_replace('\\', '/', $Path);
+        $Path= str_replace('\\', '/', $Path ?: '');
         $Path= rtrim($Path, '/');
         return ($Path) ? "$Path/" : '';
     }
@@ -39,7 +39,7 @@ class File {
      */
     public function Unslashed($Path) {
 
-        $Path= str_replace('\\', '/', $Path);
+        $Path= str_replace('\\', '/', $Path ?: '');
         return rtrim($Path, '/');
     }
 
@@ -61,7 +61,7 @@ class File {
      */
     public function AddSuffixToFileName($File, $Suffix) {
 
-        $x= strrpos($File, '.');
+        $x= strrpos($File ?: '', '.');
         return $x === false
             ? $File.$Suffix
             :  substr($File, 0, $x).$Suffix.substr($File, $x);
@@ -78,7 +78,7 @@ class File {
      */
     public function ShortedFileName($Name, $Len, $Dots='...') {
 
-        if (strlen($Name) <= $Len) {
+        if (strlen($Name ?: '') <= $Len) {
             return $Name;
         }
         $PI= pathinfo($Name);
@@ -469,7 +469,7 @@ class File {
         } while (true);
         $F->close();
         natcasesort($Files);
-        return $Files;
+        return array_values($Files);
     }
 
 
@@ -509,7 +509,7 @@ class File {
         } while (true);
         $F->close();
         natcasesort($Files);
-        return $Files;
+        return array_values($Files);
     }
 
 

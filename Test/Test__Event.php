@@ -71,8 +71,8 @@ class Test__Event extends AccentTestCase {
 
 
 	public function TestAttachListener() {
-d($this);
-        // test: AttachListner
+
+        // test: AttachListener
 		$Res= $this->EventMan->AttachListener('TestingA', array($this,'DemoListener_A'));
 		$this->assertEqual($Res, true);
 

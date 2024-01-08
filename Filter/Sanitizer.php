@@ -150,7 +150,7 @@ class Sanitizer extends Component {
 	 */
 	public function Sanitize_Trim($Value) {
 
-		return trim($Value);
+		return trim($Value ?: '');
 	}
 
 

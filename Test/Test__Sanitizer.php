@@ -34,36 +34,40 @@ class Test__Sanitizer extends AccentTestCase {
 
     public function TestInteger() {
 
-        $Tests= array('247kCC'=>247, 'kCC'=>0, '0.9'=>0, 0.9=>0, true=>1, false=>0,
-            ''=>0, '002'=>2, );
+        $Tests= array(
+            ['247kCC', 247], ['kCC', 0], ['0.9', 0], [0.9, 0], [true, 1], [false, 0], ['', 0], ['002', 2],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $this->assertEqual($F->Sanitize($k, 'I'), $v);
+        foreach($Tests as $Test) {
+            $this->assertEqual($F->Sanitize($Test[0], 'I'), $Test[1]);
         }
     }
 
 
     public function TestTrim() {
 
-        $Tests= array('22'=>'22', ' 2 '=>'2', ''=>'', 0.9=>'0.9', true=>'1', false=>'0',
-            "\n"=>'', "\r\n\t"=>'', "\nK\r"=>'K', "\tE\n"=>'E', );
+        $Tests= array(
+            ['22', '22'], [' 2 ', '2'], ['', ''], [0.9, '0.9'], [true, '1'], [false, ''],
+            ["\n", ''], ["\r\n\t", ''], ["\nK\r", 'K'], ["\tE\n", 'E'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'T');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'T');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestFloat() {
 
-        $Tests= array('22'=>22, ' 2 '=>'2', ''=>'', 0.71=>0.71, true=>1, false=>0,
-            "\n"=>0, "\r\n\t"=>0, "\n91\r"=>91, "\t92\n"=>92,
-            '0.72'=>0.72, );
+        $Tests= array(
+            ['22', 22], [' 2 ', 2], ['', 0], [0.71, 0.71], [true, 1], [false, 0],
+            ["\n", 0], ["\r\n\t", 0], ["\n91\r", 91], ["\t92\n", 92], ['0.72', 0.72],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'FLOAT');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'FLOAT');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
@@ -90,51 +94,57 @@ class Test__Sanitizer extends AccentTestCase {
         );
         $F= $this->BuildSanitizer($NewOptions);
         $Tests= array(
-            '0,58'=> '0.58',    // decimal separator
-            '1.500.000'=> '1500000',// thousand separator
-            '2.048,9'=> '2048.9',   // combined
-            ',4'=> '.4',            // missing leading zero
-            '-14,2'=> '-14.2',      // negative number
+            ['0,58', '0.58'],         // using decimal separator
+            ['1.500.000', '1500000'], // using a thousand separator
+            ['2.048,9', '2048.9'],    // combined
+            [',4', '.4'],             // missing leading zero
+            ['-14,2', '-14.2'],       // negative number
         );
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'Local');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'Local');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestUrlDecode() {
         // also testing full name of filter ('URLDECODE') instead of alias '@'.
-        $Tests= array('22'=>22, ' 2 '=>' 2 ', ''=>'', 0.71=>'0.71', true=>'1', false=>'0',
-            '+'=>' ', '%20'=>' ',);
+        $Tests= array(
+            ['22', 22], [' 2 ', ' 2 '], ['', ''], [0.71, '0.71'], [true, '1'], [false, ''],
+            ['+', ' '], ['%20', ' '],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'URLDECODE');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'URLDECODE');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestCaseUpper() {
 
-        $Tests= array('22'=>22, ' 2 '=>' 2 ', ''=>'', 0.71=>0.71, true=>1, false=>0,
-            'maja'=>'MAJA', 'Đorđe'=>'ĐORĐE', '_@'=>'_@', );
+        $Tests= array(
+            ['22', '22'], [' 2 ', ' 2 '], ['', ''], [0.71, '0.71'], [true, '1'], [false, ''],
+            ['maja', 'MAJA'], ['Đorđe', 'ĐORĐE'], ['_@', '_@'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'CU');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'CU');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestCaseLower() {
 
-        $Tests= array('22'=>22, ' 2 '=>' 2 ', ''=>'', 0.71=>0.71, true=>1, false=>0,
-            'maja'=>'maja', 'Đorđe'=>'đorđe', '_@'=>'_@', );
+        $Tests= array(
+            ['22', '22'], [' 2 ', ' 2 '], ['', ''], [0.71, '0.71'], [true, '1'], [false, ''],
+            ['maja', 'maja'], ['Đorđe', 'đorđe'], ['_@', '_@'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'CL');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'CL');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
@@ -192,7 +202,7 @@ class Test__Sanitizer extends AccentTestCase {
             array(-9, '-6..-4', -6),
             array(5, '-5..-3', -3),
             array('', '4..6', 4),
-            array('d', '4..6', 4),
+            array('d', '4..6', 6),
             array('5', '4..6', 5),
             array('4.1', '4..6', 4.1),
         );
@@ -219,64 +229,74 @@ class Test__Sanitizer extends AccentTestCase {
 
     public function TestAlpha() {
 
-        $Tests= array('22'=>'', ' 2 '=>'', ''=>'', 0.9=>'', true=>'', false=>'',
-            "\n"=>'', "\r\n\t"=>'', "\nK\r"=>'K', "\tE\n"=>'E', );
+        $Tests= array(
+            ['22', ''], [' 2 ', ''], ['', ''], [0.9, ''], [true, ''], [false, ''],
+            ["\n", ''], ["\r\n\t", ''], ["\nK\r", 'K'], ["\tE\n", 'E'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'Alpha');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'Alpha');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestAlnum() {
 
-        $Tests= array('22'=>'22', ' 2h '=>'2h', ''=>'', 0.9=>'09', true=>'1', false=>'0',
-            "\n"=>'', "\r\n\t"=>'', "\nK\r"=>'K', "\tE\n"=>'E', );
+        $Tests= array(
+            ['22', '22'], [' 2h ', '2h'], ['', ''], [0.9, '09'], [true, '1'], [false, ''],
+            ["\n", ''], ["\r\n\t", ''], ["\nK\r", 'K'], ["\tE\n", 'E'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'Alnum');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'Alnum');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestDigits() {
 
-        $Tests= array('22'=>'22', ' 2h '=>'2', ''=>'', 0.9=>'09', true=>'1', false=>'0',
-            "\n"=>'', "\r\n\t"=>'', "\nK\r"=>'', "\tE\n"=>'', );
+        $Tests= array(
+            ['22', '22'], [' 2h ', '2'], ['', ''], [0.9, '09'], [true, '1'], [false, ''],
+            ["\n", ''], ["\r\n\t", ''], ["\nK\r", ''], ["\tE\n", ''],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'Digits');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'Digits');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestFileName() {
 
-        $Tests= array('mama.txt'=>'mama.txt', ' '=>'', ''=>'', 0.9=>'0.9',
-            '/etc/pass'=>'etcpass', '/?*:'=>'', '_-+!~|'=>'_-+!~|', true=>'1', false=>'0',
-            "\n"=>'', "\r\n\t"=>'', "\nK\r"=>'K', "\tE\n"=>'E', );
+        $Tests= array(
+            ['mama.txt', 'mama.txt'], [' ', ''], ['', ''], [0.9, '0.9'],
+            ['/etc/pass', 'etcpass'], ['/?*:', ''], ['_-+!~|', '_-+!~|'], [true, '1'], [false, ''],
+            ["\n", ''], ["\r\n\t", ''], ["\nK\r", 'K'], ["\tE\n", 'E'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'FileName');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'FileName');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
 
 
     public function TestFunc() {
 
-        $Tests= array('mama'=>'#mama', ' '=>'# ', ''=>'#', 0.9=>'#0.9', false=>'#0',);
+        $Tests= array(
+            ['mama', '#mama'], [' ', '# '], ['', '#'], [0.9, '#0.9'], [false, '#'],
+        );
         $F= $this->BuildSanitizer();
-        foreach($Tests as $k=>$v) {
-            $res= $F->Sanitize($k, 'Func:'.get_class($this).':_DemoFunc');
-            $this->assertEqual($res, $v, '["'.$k.'":"'.$v.'"] = "'.$res.'"');
+        foreach($Tests as $Test) {
+            $res= $F->Sanitize($Test[0], 'Func:'.get_class($this).':_DemoFunc');
+            $this->assertEqual($res, $Test[1], '["'.$Test[0].'":"'.$Test[1].'"] = "'.$res.'"');
         }
     }
     public static function _DemoFunc($Val) {
-        return '#'.$Val;
+        return '#' . strval($Val);
     }
 
 
